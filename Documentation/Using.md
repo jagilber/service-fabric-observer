@@ -602,8 +602,14 @@ Example Output in SFX (Warning) :
 ClusterObserver is a stateless singleton service that runs on one node in your cluster. It can be
 configured to emit telemetry to your Azure ApplicationInsights or Azure LogAnalytics workspace out of the box. 
 All you have to do is provide either your instrumentation key in two files: Settings.xml and ApplicationInsights.config or 
-supply your Azure LogAnalytics WorkspaceId and SharedKey in Settings.xml. You can 
+supply your Azure Monitor Data Collection Endpoint and Data Collection Rule immutableId in Settings.xml. You can 
 configure CO to emit Warning state signals in addition to the default Error signalling. It's up to you.  
+
+> **LogAnalytics note**: The Azure Monitor HTTP Data Collector API (`LogAnalyticsWorkspaceId` + `LogAnalyticsSharedKey`) was retired on
+> September 14, 2026. Use `LogAnalyticsDataCollectionEndpoint` and `LogAnalyticsDcrImmutableId` instead, which authenticate with Entra ID.
+> The identity used (system-assigned managed identity by default) needs the **Monitoring Metrics Publisher** role on the Data Collection Rule.
+> Because the Logs Ingestion API does not apply the Data Collector API's automatic `_s`/`_d`/`_b` column suffixes, define your DCR output schema
+> (or a DCR KQL transform) with the legacy suffixed column names if you need existing queries and alerts to keep working.
 
 ClusterObserver's ObserverManager config (Settings.xml). These are not overridable:
 
@@ -633,9 +639,19 @@ ClusterObserver's ObserverManager config (Settings.xml). These are not overridab
     <Parameter Name="TelemetryProvider" Value="AzureLogAnalytics" />
     <!-- Required-If TelemetryProvider is AzureApplicationInsights. -->
     <Parameter Name="AppInsightsInstrumentationKey" Value="" />
-    <!-- Required-If TelemetryProvider is AzureLogAnalytics. Your Workspace Id. -->
+    <!-- Required-If TelemetryProvider is AzureLogAnalytics. Logs ingestion URI of your Data Collection Endpoint. -->
+    <Parameter Name="LogAnalyticsDataCollectionEndpoint" Value="" />
+    <!-- Required-If TelemetryProvider is AzureLogAnalytics. immutableId of your Data Collection Rule. -->
+    <Parameter Name="LogAnalyticsDcrImmutableId" Value="" />
+    <!-- Optional: DCR stream name. Defaults to Custom-{LogAnalyticsLogType}_CL. -->
+    <Parameter Name="LogAnalyticsStreamName" Value="" />
+    <!-- Optional: Leave empty for the system-assigned managed identity. Set only ClientId for a user-assigned managed
+         identity, or all three for service principal auth. -->
+    <Parameter Name="LogAnalyticsTenantId" Value="" />
+    <Parameter Name="LogAnalyticsClientId" Value="" />
+    <Parameter Name="LogAnalyticsClientSecret" Value="" />
+    <!-- RETIRED (HTTP Data Collector API, retired September 14, 2026). Only used when the DCE/DCR settings above are empty. -->
     <Parameter Name="LogAnalyticsWorkspaceId" Value="" />
-    <!-- Required-If TelemetryProvider is AzureLogAnalytics. Your Shared Key. -->
     <Parameter Name="LogAnalyticsSharedKey" Value="" />
     <!-- Required-If TelemetryProvider is AzureLogAnalytics. Log scope. Default is Application. -->
     <Parameter Name="LogAnalyticsLogType" Value="ClusterObserver" />

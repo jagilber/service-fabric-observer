@@ -33,6 +33,14 @@
     <!-- Application Insights -->
     <Parameter Name="AppInsightsConnectionString" DefaultValue="" />
     <!-- LogAnalytics -->
+    <!-- Logs Ingestion API. The HTTP Data Collector API (WorkspaceId/SharedKey) was retired on September 14, 2026. -->
+    <Parameter Name="LogAnalyticsDataCollectionEndpoint" DefaultValue="" />
+    <Parameter Name="LogAnalyticsDcrImmutableId" DefaultValue="" />
+    <Parameter Name="LogAnalyticsStreamName" DefaultValue="" />
+    <Parameter Name="LogAnalyticsTenantId" DefaultValue="" />
+    <Parameter Name="LogAnalyticsClientId" DefaultValue="" />
+    <Parameter Name="LogAnalyticsClientSecret" DefaultValue="" />
+    <!-- RETIRED. Only used when LogAnalyticsDataCollectionEndpoint and LogAnalyticsDcrImmutableId are not set. -->
     <Parameter Name="LogAnalyticsWorkspaceId" DefaultValue="" />
     <Parameter Name="LogAnalyticsSharedKey" DefaultValue="" />
     <Parameter Name="LogAnalyticsLogType" DefaultValue="FabricObserver" />
@@ -435,6 +443,12 @@
             <!-- Application Insights -->
             <Parameter Name="AppInsightsConnectionString" Value="[AppInsightsConnectionString]" />
             <!-- LogAnalytics -->
+            <Parameter Name="LogAnalyticsDataCollectionEndpoint" Value="[LogAnalyticsDataCollectionEndpoint]" />
+            <Parameter Name="LogAnalyticsDcrImmutableId" Value="[LogAnalyticsDcrImmutableId]" />
+            <Parameter Name="LogAnalyticsStreamName" Value="[LogAnalyticsStreamName]" />
+            <Parameter Name="LogAnalyticsTenantId" Value="[LogAnalyticsTenantId]" />
+            <Parameter Name="LogAnalyticsClientId" Value="[LogAnalyticsClientId]" />
+            <Parameter Name="LogAnalyticsClientSecret" Value="[LogAnalyticsClientSecret]" />
             <Parameter Name="LogAnalyticsWorkspaceId" Value="[LogAnalyticsWorkspaceId]" />
             <Parameter Name="LogAnalyticsSharedKey" Value="[LogAnalyticsSharedKey]" />
             <Parameter Name="LogAnalyticsLogType" Value="[LogAnalyticsLogType]" />

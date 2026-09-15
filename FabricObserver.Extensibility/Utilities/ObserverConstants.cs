@@ -163,6 +163,15 @@ namespace FabricObserver.Observers.Utilities
         public const string LogAnalyticsLogTypeParameter = "LogAnalyticsLogType";
         public const string LogAnalyticsSharedKeyParameter = "LogAnalyticsSharedKey";
         public const string LogAnalyticsWorkspaceIdParameter = "LogAnalyticsWorkspaceId";
+
+        // LogAnalytics - Logs Ingestion API (replaces the retired HTTP Data Collector API).
+        public const string LogAnalyticsDataCollectionEndpointParameter = "LogAnalyticsDataCollectionEndpoint";
+        public const string LogAnalyticsDcrImmutableIdParameter = "LogAnalyticsDcrImmutableId";
+        public const string LogAnalyticsStreamNameParameter = "LogAnalyticsStreamName";
+        public const string LogAnalyticsTenantIdParameter = "LogAnalyticsTenantId";
+        public const string LogAnalyticsClientIdParameter = "LogAnalyticsClientId";
+        public const string LogAnalyticsClientSecretParameter = "LogAnalyticsClientSecret";
+
         public const string InfrastructureServiceType = "InfrastructureServiceType";
         public const string ClusterTypeSfrp = "SFRP";
         public const string Undefined = "Undefined";

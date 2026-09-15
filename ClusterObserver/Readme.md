@@ -101,9 +101,19 @@ Start-ServiceFabricApplicationUpgrade -ApplicationName $appName -ApplicationType
 		<Parameter Name="AppInsightsConnectionString" Value="" />
 		
 		<!-- AzureLogAnalytics -->
-		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Your Workspace Id. -->
+		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Logs ingestion URI of your Data Collection Endpoint. -->
+		<Parameter Name="LogAnalyticsDataCollectionEndpoint" Value="" />
+		<!-- Required-If TelemetryProvider is AzureLogAnalytics. immutableId of your Data Collection Rule. -->
+		<Parameter Name="LogAnalyticsDcrImmutableId" Value="" />
+		<!-- Optional: DCR stream name. Defaults to Custom-{LogAnalyticsLogType}_CL. -->
+		<Parameter Name="LogAnalyticsStreamName" Value="" />
+		<!-- Optional: Leave empty for the system-assigned managed identity. Set only ClientId for a user-assigned managed
+		     identity, or all three for service principal auth. -->
+		<Parameter Name="LogAnalyticsTenantId" Value="" />
+		<Parameter Name="LogAnalyticsClientId" Value="" />
+		<Parameter Name="LogAnalyticsClientSecret" Value="" />
+		<!-- RETIRED (HTTP Data Collector API, retired September 14, 2026). Only used when the DCE/DCR settings above are empty. -->
 		<Parameter Name="LogAnalyticsWorkspaceId" Value="" />
-		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Your Shared Key. -->
 		<Parameter Name="LogAnalyticsSharedKey" Value="" />
 		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Log scope. Default is Application. -->
 		<Parameter Name="LogAnalyticsLogType" Value="ClusterObserver" />

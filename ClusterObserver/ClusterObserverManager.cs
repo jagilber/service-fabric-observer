@@ -281,17 +281,27 @@ namespace ClusterObserver
             {
                 case TelemetryProviderType.AzureLogAnalytics:
 
-                    string logAnalyticsLogType = GetConfigSettingValue(ObserverConstants.LogAnalyticsLogTypeParameter, settings) ?? "Application";
-                    string logAnalyticsSharedKey = GetConfigSettingValue(ObserverConstants.LogAnalyticsSharedKeyParameter, settings);
-                    string logAnalyticsWorkspaceId = GetConfigSettingValue(ObserverConstants.LogAnalyticsWorkspaceIdParameter, settings);
+                    LogAnalyticsConfig logAnalyticsConfig = new()
+                    {
+                        LogType = GetConfigSettingValue(ObserverConstants.LogAnalyticsLogTypeParameter, settings) ?? "Application",
+                        SharedKey = GetConfigSettingValue(ObserverConstants.LogAnalyticsSharedKeyParameter, settings),
+                        WorkspaceId = GetConfigSettingValue(ObserverConstants.LogAnalyticsWorkspaceIdParameter, settings),
+                        DataCollectionEndpoint = GetConfigSettingValue(ObserverConstants.LogAnalyticsDataCollectionEndpointParameter, settings),
+                        DcrImmutableId = GetConfigSettingValue(ObserverConstants.LogAnalyticsDcrImmutableIdParameter, settings),
+                        StreamName = GetConfigSettingValue(ObserverConstants.LogAnalyticsStreamNameParameter, settings),
+                        TenantId = GetConfigSettingValue(ObserverConstants.LogAnalyticsTenantIdParameter, settings),
+                        ClientId = GetConfigSettingValue(ObserverConstants.LogAnalyticsClientIdParameter, settings),
+                        ClientSecret = GetConfigSettingValue(ObserverConstants.LogAnalyticsClientSecretParameter, settings)
+                    };
 
-                    if (string.IsNullOrWhiteSpace(logAnalyticsSharedKey) || string.IsNullOrWhiteSpace(logAnalyticsWorkspaceId))
+                    TelemetryClient = LogAnalyticsTelemetry.Create(logAnalyticsConfig);
+
+                    if (TelemetryClient == null)
                     {
                         TelemetryEnabled = false;
                         return;
                     }
 
-                    TelemetryClient = new LogAnalyticsTelemetry(logAnalyticsWorkspaceId, logAnalyticsSharedKey, logAnalyticsLogType);
                     break;
 
                 case TelemetryProviderType.AzureApplicationInsights:

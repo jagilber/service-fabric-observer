@@ -7,47 +7,96 @@ using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.Fabric.Health;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
+using Azure.Identity;
 using FabricObserver.Observers.Interfaces;
 using FabricObserver.TelemetryLib;
 using Newtonsoft.Json;
 
 namespace FabricObserver.Observers.Utilities.Telemetry
 {
-    // LogAnalyticsTelemetry class is partially (SendTelemetryAsync/GetSignature) based on public sample: https://dejanstojanovic.net/aspnet/2018/february/send-data-to-azure-log-analytics-from-c-code/
-    public class LogAnalyticsTelemetry(
-            string workspaceId,
-            string sharedKey,
-            string logType) : ITelemetryProvider
+    public class LogAnalyticsTelemetry : ITelemetryProvider
     {
-        private const string ApiVersion = "2016-04-01";
-        private readonly Logger logger = new Logger("TelemetryLogger");
-
-        private string WorkspaceId
-        {
-            get;
-        } = workspaceId;
-
-        private string LogType
-        {
-            get;
-        } = logType;
-
-        private string TargetUri => $"https://{WorkspaceId}.ods.opinsights.azure.com/api/logs?api-version={ApiVersion}";
+        private readonly Logger logger = new("TelemetryLogger");
+        private readonly ILogAnalyticsSender sender;
 
         public string Key
         {
             get; set;
-        } = sharedKey;
+        }
 
         /// <summary>
-        /// Sends telemetry data to Azure LogAnalytics via REST.
+        /// Creates a provider that sends to the retired HTTP Data Collector API.
+        /// Retained for source compatibility and for clouds where the endpoint is still serviced.
+        /// Prefer <see cref="Create"/>, which selects the Logs Ingestion API when it is configured.
+        /// </summary>
+        public LogAnalyticsTelemetry(string workspaceId, string sharedKey, string logType)
+        {
+            Key = sharedKey;
+            sender = new DataCollectorApiSender(workspaceId, sharedKey, logType, logger);
+        }
+
+        private LogAnalyticsTelemetry(ILogAnalyticsSender sender)
+        {
+            this.sender = sender;
+        }
+
+        /// <summary>
+        /// Builds a LogAnalytics telemetry provider from configuration, preferring the Logs Ingestion API.
+        /// </summary>
+        /// <param name="config">LogAnalytics configuration values.</param>
+        /// <returns>A configured provider, or null when the supplied configuration is insufficient.</returns>
+        public static LogAnalyticsTelemetry Create(LogAnalyticsConfig config)
+        {
+            Logger logger = new("TelemetryLogger");
+
+            if (config == null)
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.DataCollectionEndpoint) && !string.IsNullOrWhiteSpace(config.DcrImmutableId))
+            {
+                if (!Uri.TryCreate(config.DataCollectionEndpoint, UriKind.Absolute, out Uri endpoint))
+                {
+                    logger.LogWarning($"LogAnalyticsDataCollectionEndpoint is not a valid absolute URI: {config.DataCollectionEndpoint}. LogAnalytics telemetry is disabled.");
+                    return null;
+                }
+
+                TokenCredential credential = CreateCredential(config);
+                string stream = !string.IsNullOrWhiteSpace(config.StreamName) ? config.StreamName : $"Custom-{config.LogType}_CL";
+
+                return new LogAnalyticsTelemetry(new LogsIngestionSender(endpoint, config.DcrImmutableId, stream, credential, logger));
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.WorkspaceId) && !string.IsNullOrWhiteSpace(config.SharedKey))
+            {
+                return new LogAnalyticsTelemetry(config.WorkspaceId, config.SharedKey, config.LogType);
+            }
+
+            return null;
+        }
+
+        private static TokenCredential CreateCredential(LogAnalyticsConfig config)
+        {
+            if (!string.IsNullOrWhiteSpace(config.TenantId)
+                && !string.IsNullOrWhiteSpace(config.ClientId)
+                && !string.IsNullOrWhiteSpace(config.ClientSecret))
+            {
+                return new ClientSecretCredential(config.TenantId, config.ClientId, config.ClientSecret);
+            }
+
+            // A client id without a secret identifies a user-assigned managed identity.
+            return !string.IsNullOrWhiteSpace(config.ClientId)
+                ? new ManagedIdentityCredential(config.ClientId)
+                : new ManagedIdentityCredential();
+        }
+
+        /// <summary>
+        /// Sends telemetry data to Azure Monitor.
         /// </summary>
         /// <param name="payload">Json string containing telemetry data.</param>
         /// <param name="cancellationToken">CancellationToken instance.</param>
@@ -61,30 +110,9 @@ namespace FabricObserver.Observers.Utilities.Telemetry
 
             try
             {
-                string date = DateTime.UtcNow.ToString("r");
-                string signature = GetSignature("POST", payload.Length, "application/json", date, "/api/logs");
-                byte[] content = Encoding.UTF8.GetBytes(payload);
-                using HttpClient httpClient = new();
-                using HttpRequestMessage request = new(HttpMethod.Post, TargetUri);
-                request.Headers.Authorization = AuthenticationHeaderValue.Parse(signature);
-                request.Content = new ByteArrayContent(content);
-                request.Content.Headers.Add("Content-Type", "application/json");
-                request.Content.Headers.Add("Log-Type", LogType);
-                request.Content.Headers.Add("x-ms-date", date);
-                using var response = await httpClient.SendAsync(request, cancellationToken);
-
-                if (response != null && (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Accepted))
-                {
-                    return;
-                }
-
-                if (response != null)
-                {
-                    logger.LogWarning(
-                        $"Unexpected response from server in LogAnalyticsTelemetry.SendTelemetryAsync:{Environment.NewLine}{response.StatusCode}: {response.ReasonPhrase}");
-                }
+                await sender.SendAsync(payload, cancellationToken);
             }
-            catch (Exception e) when (e is HttpRequestException or InvalidOperationException)
+            catch (Exception e) when (e is HttpRequestException or InvalidOperationException or OperationCanceledException)
             {
                 logger.LogInfo($"Exception sending telemetry to LogAnalytics service:{Environment.NewLine}{e.Message}");
             }
@@ -98,20 +126,6 @@ namespace FabricObserver.Observers.Utilities.Telemetry
                 logger.LogWarning($"Exception sending telemetry to LogAnalytics service: {e.Message}");
 #endif
             }
-        }
-
-        private string GetSignature(
-                        string method,
-                        int contentLength,
-                        string contentType,
-                        string date,
-                        string resource)
-        {
-            string message = $"{method}\n{contentLength}\n{contentType}\nx-ms-date:{date}\n{resource}";
-            byte[] bytes = Encoding.UTF8.GetBytes(message);
-            using HMACSHA256 encryptor = new(Convert.FromBase64String(Key));
-
-            return $"SharedKey {WorkspaceId}:{Convert.ToBase64String(encryptor.ComputeHash(bytes))}";
         }
 
         public async Task ReportHealthAsync(

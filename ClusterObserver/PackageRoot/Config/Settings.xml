@@ -37,10 +37,22 @@
 		<Parameter Name="AppInsightsInstrumentationKey" Value="" />
 
 		<!-- LogAnalytics -->
-		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Your Workspace Id.
+		<!-- Required-If TelemetryProvider is AzureLogAnalytics. The logs ingestion URI of your Data Collection Endpoint,
+         e.g. https://my-dce-abcd.eastus-1.ingest.monitor.azure.com 
          NOTE: Values must now be set in ApplicationManifest.xml. This is a *breaking change* in version 3.2.15. -->
+		<Parameter Name="LogAnalyticsDataCollectionEndpoint" Value="" MustOverride="true" />
+		<!-- Required-If TelemetryProvider is AzureLogAnalytics. The immutableId of your Data Collection Rule, e.g. dcr-0123456789abcdef0123456789abcdef -->
+		<Parameter Name="LogAnalyticsDcrImmutableId" Value="" MustOverride="true" />
+		<!-- Optional. DCR stream name. Defaults to Custom-{LogAnalyticsLogType}_CL. -->
+		<Parameter Name="LogAnalyticsStreamName" Value="" MustOverride="true" />
+		<!-- Optional. Leave all three empty to use the node's system-assigned managed identity. Set only LogAnalyticsClientId to use a
+         user-assigned managed identity. Set all three for service principal auth. The identity needs the Monitoring Metrics Publisher role on the DCR. -->
+		<Parameter Name="LogAnalyticsTenantId" Value="" MustOverride="true" />
+		<Parameter Name="LogAnalyticsClientId" Value="" MustOverride="true" />
+		<Parameter Name="LogAnalyticsClientSecret" Value="" MustOverride="true" />
+		<!-- RETIRED. The HTTP Data Collector API that WorkspaceId/SharedKey authenticate against was retired on September 14, 2026.
+         These are only used when LogAnalyticsDataCollectionEndpoint and LogAnalyticsDcrImmutableId are not set. -->
 		<Parameter Name="LogAnalyticsWorkspaceId" Value="" MustOverride="true" />
-		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Your Shared Key. -->
 		<Parameter Name="LogAnalyticsSharedKey" Value="" MustOverride="true" />
 		<!-- Required-If TelemetryProvider is AzureLogAnalytics. Log scope. Default is Application. -->
 		<Parameter Name="LogAnalyticsLogType" Value="" MustOverride="true" />

@@ -1533,25 +1533,36 @@ namespace FabricObserver.Observers
             {
                 case TelemetryProviderType.AzureLogAnalytics:
                         
-                    string logAnalyticsLogType =
-                        GetSettingParameterValue(
-                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsLogTypeParameter);
+                    LogAnalyticsConfig logAnalyticsConfig = new()
+                    {
+                        LogType = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsLogTypeParameter),
+                        SharedKey = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsSharedKeyParameter),
+                        WorkspaceId = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsWorkspaceIdParameter),
+                        DataCollectionEndpoint = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsDataCollectionEndpointParameter),
+                        DcrImmutableId = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsDcrImmutableIdParameter),
+                        StreamName = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsStreamNameParameter),
+                        TenantId = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsTenantIdParameter),
+                        ClientId = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsClientIdParameter),
+                        ClientSecret = GetSettingParameterValue(
+                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsClientSecretParameter)
+                    };
 
-                    string logAnalyticsSharedKey =
-                        GetSettingParameterValue(
-                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsSharedKeyParameter);
+                    TelemetryClient = LogAnalyticsTelemetry.Create(logAnalyticsConfig);
 
-                    string logAnalyticsWorkspaceId =
-                        GetSettingParameterValue(
-                            ObserverConstants.ObserverManagerConfigurationSectionName, ObserverConstants.LogAnalyticsWorkspaceIdParameter);
-
-                    if (string.IsNullOrWhiteSpace(logAnalyticsWorkspaceId) || string.IsNullOrWhiteSpace(logAnalyticsSharedKey))
+                    if (TelemetryClient == null)
                     {
                         IsTelemetryEnabled = false;
                         return;
                     }
 
-                    TelemetryClient = new LogAnalyticsTelemetry(logAnalyticsWorkspaceId, logAnalyticsSharedKey, logAnalyticsLogType);
                     break;
 
                 case TelemetryProviderType.AzureApplicationInsights:

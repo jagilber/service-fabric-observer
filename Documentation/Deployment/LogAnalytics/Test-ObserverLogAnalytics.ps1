@@ -1,5 +1,6 @@
 #Requires -Version 7.0
 #Requires -Modules Az.Accounts
+# NOT CUSTOMER-READY. Modified checker requires representative Hyper-V or Dev Box validation before external delivery.
 <#
 .SYNOPSIS
 Read-only checks for moving FabricObserver or ClusterObserver Log Analytics data to the Logs Ingestion API.
@@ -139,6 +140,11 @@ function Invoke-Query([string] $WorkspaceCustomerId, [string] $Kql) {
     } catch {
         throw "Log Analytics query failed: $($_.ErrorDetails.Message ?? $_.Exception.Message)"
     } finally { $token = $null }
+    if ($null -ne $r.error) {
+        $errorCode = [string]$r.error.code
+        if ([string]::IsNullOrWhiteSpace($errorCode)) { $errorCode = 'UnspecifiedError' }
+        throw "Log Analytics query returned an error ($errorCode). Incomplete results cannot be used for migration verification."
+    }
     $table = $r.tables[0]
     foreach ($row in $table.rows) {
         $o = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)

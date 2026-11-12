@@ -89,6 +89,10 @@
         "type": "string"
       },
       {
+        "name": "datetime_t",
+        "type": "datetime"
+      },
+      {
         "name": "Description_s",
         "type": "string"
       },
@@ -142,6 +146,10 @@
       },
       {
         "name": "HotFixes_s",
+        "type": "string"
+      },
+      {
+        "name": "id_s",
         "type": "string"
       },
       {
@@ -373,6 +381,10 @@
         "type": "string"
       },
       {
+        "name": "value_d",
+        "type": "real"
+      },
+      {
         "name": "Value_d",
         "type": "real"
       },
@@ -415,6 +427,10 @@
         "type": "string"
       },
       {
+        "name": "datetime_t",
+        "type": "datetime"
+      },
+      {
         "name": "Description_s",
         "type": "string"
       },
@@ -444,6 +460,10 @@
       },
       {
         "name": "healthState_s",
+        "type": "string"
+      },
+      {
+        "name": "id_s",
         "type": "string"
       },
       {
@@ -593,6 +613,10 @@
       {
         "name": "UpgradeTargetConfigVersion_s",
         "type": "string"
+      },
+      {
+        "name": "value_d",
+        "type": "real"
       },
       {
         "name": "Value_d",

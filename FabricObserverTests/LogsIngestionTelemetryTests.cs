@@ -7,6 +7,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Fabric.Health;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -110,6 +111,72 @@ namespace FabricObserverTests
                     JToken.DeepEquals(expectedRecord, actualRecord),
                     $"Record {i} differs from the old API.{Environment.NewLine}Expected: {expectedRecord}{Environment.NewLine}Actual: {actualRecord}");
             }
+        }
+
+        [TestMethod]
+        [DataRow("FabricObserver")]
+        [DataRow("ClusterObserver")]
+        public async Task NamedMetric_DefaultTemplatesPreserveCaseSensitiveNumericColumns(string application)
+        {
+            var handler = new FakeHandler(this);
+            ITelemetryProvider sender = CreateSender(handler);
+
+            await sender.ReportMetricAsync("metric", 42.0, "Source", CancellationToken.None);
+            await sender.ReportMetricAsync(ServiceRecord(), CancellationToken.None);
+
+            JObject genericRecord = (JObject)JArray.Parse(handler.Uploads[0].Body)[0]["Payload"];
+            JObject serviceRecord = (JObject)JArray.Parse(handler.Uploads[1].Body)[0]["Payload"];
+            Assert.AreEqual(42.0, (double)genericRecord["value"]);
+            Assert.AreEqual(12.5, (double)serviceRecord["Value"]);
+
+            string contracts = Path.Combine(AppContext.BaseDirectory, "ConfigurationContracts", "LogAnalytics");
+            JObject schema = JObject.Parse(File.ReadAllText(Path.Combine(contracts, "LogAnalyticsSchema.json")));
+            JObject template = JObject.Parse(File.ReadAllText(Path.Combine(contracts, $"{application}.LogAnalytics.json")));
+
+            foreach (string field in new[] { "value", "Value" })
+            {
+                string columnName = field + "_d";
+                JObject schemaColumn = schema["applications"][application].OfType<JObject>()
+                    .SingleOrDefault(column => (string)column["name"] == columnName);
+                Assert.IsNotNull(schemaColumn, $"{application} must preserve the case-sensitive legacy column {columnName}.");
+                Assert.AreEqual("real", (string)schemaColumn["type"]);
+
+                JObject templateColumn = template["variables"]["recordColumns"].OfType<JObject>()
+                    .SingleOrDefault(column => (string)column["name"] == columnName);
+                Assert.IsNotNull(templateColumn, $"{application} template must declare {columnName}.");
+                Assert.AreEqual("real", (string)templateColumn["type"]);
+                StringAssert.Contains(
+                    (string)template["variables"]["transformKql"],
+                    $"{columnName} = iff(gettype(Payload['{field}']) in ('long','real','int'), todouble(Payload['{field}']), real(null))");
+            }
+        }
+
+        [TestMethod]
+        [DataRow("FabricObserver")]
+        [DataRow("ClusterObserver")]
+        public async Task NamedMetric_DefaultTemplatesMapEveryPayloadField(string application)
+        {
+            var handler = new FakeHandler(this);
+            ITelemetryProvider sender = CreateSender(handler);
+
+            await sender.ReportMetricAsync("metric", 42.0, "Source", CancellationToken.None);
+
+            JObject genericRecord = (JObject)JArray.Parse(handler.Uploads.Single().Body)[0]["Payload"];
+            string contracts = Path.Combine(AppContext.BaseDirectory, "ConfigurationContracts", "LogAnalytics");
+            JObject template = JObject.Parse(File.ReadAllText(Path.Combine(contracts, $"{application}.LogAnalytics.json")));
+            string[] columns = [.. template["variables"]["recordColumns"].Select(column => (string)column["name"])];
+            string transform = (string)template["variables"]["transformKql"];
+
+            // The Data Collector API stored each field as <field>_<type suffix>; names are case-sensitive.
+            foreach (string field in genericRecord.Properties().Select(property => property.Name))
+            {
+                Assert.IsTrue(
+                    columns.Any(column => column.Length == field.Length + 2 && column.StartsWith(field + "_", StringComparison.Ordinal)),
+                    $"{application} template must declare a column for the generic metric field '{field}'.");
+                StringAssert.Contains(transform, $"Payload['{field}']", $"{application} transform must read the generic metric field '{field}'.");
+            }
+
+            CollectionAssert.IsSubsetOf(new[] { "id_s", "datetime_t", "value_d" }, columns);
         }
 
         [TestMethod]

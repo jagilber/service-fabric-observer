@@ -28,6 +28,9 @@
     <None Include="..\FabricObserver\PackageRoot\Config\Settings.xml" Link="ConfigurationContracts\FabricObserver\Settings.xml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\ClusterObserverApp\ApplicationPackageRoot\ApplicationManifest.xml" Link="ConfigurationContracts\ClusterObserver\ApplicationManifest.xml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\ClusterObserver\PackageRoot\Config\Settings.xml" Link="ConfigurationContracts\ClusterObserver\Settings.xml" CopyToOutputDirectory="PreserveNewest" />
+	<None Include="..\Documentation\Deployment\LogAnalytics\LogAnalyticsSchema.json" Link="ConfigurationContracts\LogAnalytics\LogAnalyticsSchema.json" CopyToOutputDirectory="PreserveNewest" />
+	<None Include="..\Documentation\Deployment\LogAnalytics\FabricObserver.LogAnalytics.json" Link="ConfigurationContracts\LogAnalytics\FabricObserver.LogAnalytics.json" CopyToOutputDirectory="PreserveNewest" />
+	<None Include="..\Documentation\Deployment\LogAnalytics\ClusterObserver.LogAnalytics.json" Link="ConfigurationContracts\LogAnalytics\ClusterObserver.LogAnalytics.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
 	<None Include="MyExpiredCert.p12">

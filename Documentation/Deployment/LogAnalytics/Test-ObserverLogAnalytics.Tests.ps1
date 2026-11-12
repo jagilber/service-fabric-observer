@@ -49,7 +49,7 @@ Describe 'Log Analytics verification query responses' {
     ) {
         $script:queryResponse | Add-Member -NotePropertyName error -NotePropertyValue ([pscustomobject]@{
             code = $Code
-            message = 'detail-that-must-not-be-echoed'
+            message = 'synthetic service message'
         })
         $accepted = [System.Collections.Generic.List[object]]::new()
 
@@ -73,16 +73,46 @@ Describe 'Log Analytics verification query responses' {
         { Invoke-Query 'test-workspace' 'print test=1' } | Should -Throw -ExpectedMessage '*PartialError*'
     }
 
-    It 'does not echo service error details in its rejection message' {
+    It 'reports the service message, detail messages and inner error messages once each' {
         $script:queryResponse | Add-Member -NotePropertyName error -NotePropertyValue ([pscustomobject]@{
             code = 'PartialError'
-            message = 'detail-that-must-not-be-echoed'
+            message = 'There were some errors when processing your query.'
+            details = @(
+                [pscustomobject]@{
+                    code = 'EngineError'
+                    message = 'Something went wrong processing your query on the server.'
+                    innererror = [pscustomobject]@{ code = '-2133196797'; message = 'Query result set has exceeded the internal record count limit.' }
+                }
+                [pscustomobject]@{ code = 'EngineError'; message = 'Something went wrong processing your query on the server.' }
+            )
         })
         $rejection = $null
         try { Invoke-Query 'test-workspace' 'print test=1' | Out-Null } catch { $rejection = $_ }
 
         $rejection | Should -BeOfType ([System.Management.Automation.ErrorRecord])
-        $rejection.Exception.Message | Should -Not -Match 'detail-that-must-not-be-echoed'
+        $rejection.Exception.Message | Should -BeExactly ('Log Analytics query returned an error (PartialError). ' +
+            'Incomplete results cannot be used for migration verification. Service message: ' +
+            'There were some errors when processing your query. ' +
+            'Something went wrong processing your query on the server. ' +
+            'Query result set has exceeded the internal record count limit.')
+    }
+
+    It 'omits the service message when the response error has none' {
+        $script:queryResponse | Add-Member -NotePropertyName error -NotePropertyValue ([pscustomobject]@{ code = 'PartialError'; message = ' ' })
+        $rejection = $null
+        try { Invoke-Query 'test-workspace' 'print test=1' | Out-Null } catch { $rejection = $_ }
+
+        $rejection.Exception.Message | Should -BeExactly 'Log Analytics query returned an error (PartialError). Incomplete results cannot be used for migration verification.'
+    }
+
+    It 'bounds a very long service message' {
+        $script:queryResponse | Add-Member -NotePropertyName error -NotePropertyValue ([pscustomobject]@{ code = 'PartialError'; message = 'x' * 5000 })
+        $rejection = $null
+        try { Invoke-Query 'test-workspace' 'print test=1' | Out-Null } catch { $rejection = $_ }
+
+        $rejection.Exception.Message | Should -Match '\(PartialError\)'
+        $rejection.Exception.Message.Length | Should -BeLessThan 1200
+        $rejection.Exception.Message | Should -Match '\.\.\.$'
     }
 
     It 'preserves complete rows and case-distinct column names' {
@@ -121,9 +151,12 @@ Describe 'Log Analytics verification query responses' {
         @{ Name = 'partial'; HasError = $true }
     ) {
         if ($HasError) {
-            $script:queryResponse | Add-Member -NotePropertyName error -NotePropertyValue ([pscustomobject]@{ code = 'PartialError' })
+            $script:queryResponse | Add-Member -NotePropertyName error -NotePropertyValue ([pscustomobject]@{
+                code = 'PartialError'
+                details = @([pscustomobject]@{ innererror = [pscustomobject]@{ message = 'wire-level inner detail' } })
+            })
         }
-        $body = $script:queryResponse | ConvertTo-Json -Depth 10 -Compress
+        $body =$script:queryResponse | ConvertTo-Json -Depth 10 -Compress
         $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
         $listener.Start()
         $script:loopbackEndpoint = "http://127.0.0.1:$($listener.LocalEndpoint.Port)/v1"
@@ -166,7 +199,8 @@ Describe 'Log Analytics verification query responses' {
         $pending = $server.BeginInvoke()
         try {
             if ($HasError) {
-                { Invoke-Query 'test-workspace' 'print test=1' } | Should -Throw -ExpectedMessage '*PartialError*'
+                { Invoke-Query 'test-workspace' 'print test=1' } |
+                    Should -Throw -ExpectedMessage '*(PartialError)*Service message: wire-level inner detail'
             }
             else {
                 $rows = @(Invoke-Query 'test-workspace' 'print test=1')
